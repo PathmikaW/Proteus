@@ -1,277 +1,196 @@
 # IT6512 Assignment 1 – I2C-Linked Arduino Velocity Controller (Proteus)
 
-Step-by-step plan. Brief: `../Assignment1- Proteus/Assignment_I2C_Arduino_Velocity_Controller_Proteus.pdf`
+Plan of work, kept strictly to the brief:
+`../Assignment1- Proteus/Assignment_I2C_Arduino_Velocity_Controller_Proteus.pdf`
 
-Marks: Circuit 15 · I2C 20 · Speed 15 · Controller 25 · Tracking/load 10 · Report/video/viva 15 = **100**
-
----
-
-## 0. Toolchain (fixed – all instructions below match these versions)
-
-| Tool | Version on this PC | Notes |
-|---|---|---|
-| Proteus 8 Professional | **8.5 SP0 (Build 22067)** | No "Arduino Uno" part in 8.5, so each Uno is modelled by its **ATMEGA328P** chip (AVR2.LIB) |
-| Arduino IDE | **1.8.19** (AVR core 1.8.3) | Board: *Arduino Uno*. *Sketch → Export compiled Binary* (Ctrl+Alt+S) |
-| Python | **3.10** (pandas 2.2.1, matplotlib 3.7.2) | Plots and step metrics |
-| Git | Repo-local identity PathmikaW | Conventional Commits, one or more per phase |
-
-**Library rule:** the brief allows only the Arduino core and Wire libraries. So we do **not** use `LiquidCrystal`. The master has its own small HD44780 4-bit LCD driver.
-
-**Who does what:** 🧑 = you, in the Proteus / Arduino GUI · 🤖 = me (code, scripts, report text)
+Marks: Task 1 Circuit 15 · Task 2 I2C 20 · Task 3 Speed 15 · Task 4 Controller 25 · Task 5 Tracking/load 10 · Task 6 Report/video/viva 15 = **100**
 
 ---
 
-## 1. Design decisions
+## 1. Toolchain and deviations from the brief
 
-### 1.1 Pin allocation (Arduino pin → ATmega328P pin name in Proteus)
-
-Proteus labels ATMEGA328P pins by port name, so wire by the right-hand column.
-
-**Slave (I2C 0x08, motor control)**
-
-| Arduino | ATmega328P pin | Net label | Function |
-|---|---|---|---|
-| D0 / D1 | PD0/RXD, PD1/TXD | S_RX, S_TX | Virtual Terminal (CSV log, 9600 8N1) |
-| D2 | PD2/INT0 | ENC_A | Encoder A, `CHANGE` interrupt |
-| D3 | PD3/INT1 | ENC_B | Encoder B, `CHANGE` interrupt |
-| D7 | PD7 | DIR1 | L298 IN1 |
-| D8 | PB0 | DIR2 | L298 IN2 |
-| D9 | PB1/OC1A | PWM | L298 ENA (Timer1, ~490 Hz) |
-| A4 / A5 | PC4/SDA, PC5/SCL | SDA, SCL | I2C bus |
-
-**Master (commands + UI)**
-
-| Arduino | ATmega328P pin | Net label | Function |
-|---|---|---|---|
-| D0 / D1 | PD0/RXD, PD1/TXD | M_RX, M_TX | Virtual Terminal (commands + log) |
-| D2, D3, D4, D5 | PD2, PD3, PD4, PD5 | LCD_D7, LCD_D6, LCD_D5, LCD_D4 | LM016L data (4-bit) |
-| D6 | PD6 | DIR_SW | SW-SPDT direction switch |
-| D11 | PB3 | LCD_E | LM016L E |
-| D12 | PB4 | LCD_RS | LM016L RS |
-| A0 | PC0/ADC0 | SP_POT | POT-HG wiper |
-| A4 / A5 | PC4/SDA, PC5/SCL | SDA, SCL | I2C bus |
-
-### 1.2 Operator interface (master)
-- **Pot** = |setpoint| 0…250 RPM, **switch** = direction (+/−). Enable bit = 1 while running.
-- **Typed commands** in the master's Virtual Terminal (for repeatable tests):
-
-| Key | Action | Used for |
+| Brief says | We use | Reason (stated in the report) |
 |---|---|---|
-| `150` + Enter (any −250…250) | Fixed setpoint override | Accuracy and open-loop checks |
-| `M` | Back to pot/switch control | Demo |
-| `S` | Scripted step 0 → 150 RPM | Task 4 |
-| `T` | Scripted 150 → 80 → −100 → 0 RPM (2 s each) | Task 5 |
-| `P` | Pause/resume I2C transmission | Task 2 watchdog test |
-| `X` | Send one frame with a corrupted checksum | Task 2 checksum test |
-| `R` | Send one frame with the reset-integrator flag | Task 2 flags |
-| `D` + value (slave test build only) | Fixed PWM duty, open loop | Tasks 3 and 4 open loop |
+| Proteus 8 | Proteus 8 Professional **8.5 SP0** | – |
+| Arduino Uno "from your Arduino library" | **ATMEGA328P** (the Uno's MCU) at 16 MHz | Proteus 8.5 has no Arduino Uno model. Same program-file and 16 MHz clock settings as setup step 2 |
+| Arduino IDE 2.x | Arduino IDE **1.8.19** (AVR core 1.8.3) | Installed version. *Export compiled Binary* gives the same `.hex` |
+| 100 pulses per rev (or nearest) | **100 PPR** (MOTOR-ENCODER allows 1–360) | Exact |
+| Plot in Excel or Python | Python 3.10 (pandas, matplotlib) | – |
 
-- LCD: line 1 `SP:+150 PV:+148`, line 2 `D:182 RUN` / `WDOG` / `SAT`
+**Library rule (brief):** only Arduino core and Wire. No PID, encoder or LCD libraries, so the master drives the LM016L with its own short 4-bit routine.
 
-### 1.3 I2C frames (exactly as in the brief)
-- Command (master → 0x08, every 100 ms): `[0x01, SP_HI, SP_LO, FLAGS, CHK]`. FLAGS bit0 = enable, bit1 = reset integrator.
-- Status (master reads 5 bytes after each command): `[STATUS, PV_HI, PV_LO, DUTY, CHK]`. STATUS bit0 = running, bit1 = watchdog fault, bit2 = saturated.
-- `CHK = b0 ^ b1 ^ b2 ^ b3`. int16 values are sent high byte first.
-- On the I2C Debugger the address byte shows as **0x10** for a write and **0x11** for a read (0x08 shifted left by 1, plus the R/W bit).
-- Slave `onReceive`: copy the bytes and the length into a volatile buffer, set a flag, return.
-- Slave `onRequest`: `Wire.write(statusFrame, 5)` from a buffer that `loop()` prepares.
-- `loop()` validates length = 5, CMD = 0x01 and CHK, clamps SP to ±250, then resets the watchdog. Bad frames are counted and logged, and do **not** reset the watchdog.
-
-### 1.4 Speed measurement: x4 quadrature
-ω = 60·Δn / (m·N·T), with N = 100 PPR and T = 0.05 s:
-
-| Decoding | Counts/rev | Resolution |
-|---|---|---|
-| x1 | 100 | 12 RPM/count |
-| x2 | 200 | 6 RPM/count |
-| **x4 (chosen)** | 400 | **3 RPM/count** |
-
-The SSE target (≤ 3 RPM) equals one x4 count, so only x4 can meet it. Both channels use `CHANGE` interrupts and a 16-entry state table that gives ±1 per edge, which also gives the direction. The count is read with `noInterrupts()`/`interrupts()`.
-
-### 1.5 Controller (slave, every 50 ms)
-- `e = SP − PV`; `u = Kp·e + Ki·T·Σe` (+ optional feed-forward `Kff·SP` from the open-loop slope)
-- Clamp `u` to ±255. PWM = |u| on D9, sign → IN1/IN2.
-- Anti-windup: conditional integration. Σe is frozen while the output is saturated **and** e would push it further into saturation.
-- Watchdog (500 ms without a valid frame): PWM = 0, Σe = 0, fault bit set. It clears on the next valid frame.
-- CSV log every 50 ms: `t,sp,pv,duty,st` (short lines so 9600 baud keeps up)
+**Academic integrity (brief):** AI assistance must be acknowledged in the report.
 
 ---
 
-## 2. Repository layout
+## 2. Repository layout (only what the deliverables need)
 
 ```
 Proteus/
-├── PLAN.md, README.md
-├── firmware/
-│   ├── master/master.ino        (folder name must equal sketch name – Arduino rule)
-│   └── slave/slave.ino
-├── proteus/
-│   ├── IT6512_I2C_Velocity.pdsprj
-│   ├── master.hex, slave.hex    (copied from the Arduino export; same folder = portable paths)
-├── scripts/
-│   ├── update_hex.bat           (copies *.ino.standard.hex → proteus/)
-│   ├── plot_log.py              (CSV → plot)
-│   └── step_metrics.py          (rise, overshoot, Ts 5 %, SSE)
-├── data/                        (CSV logs pasted from the Virtual Terminal)
-├── report/figures/              (screenshots + plots)
-└── video/                       (not committed)
+├── IT6512_I2C_Velocity.pdsprj   Proteus project (deliverable)
+├── master/master.ino            + master.ino.standard.hex (deliverable)
+├── slave/slave.ino              + slave.ino.standard.hex  (deliverable)
+├── data/                        CSV logs copied from the slave's Virtual Terminal
+├── scripts/plot.py              plots + rise / overshoot / settling / SSE
+├── report/                      figures and report source (PDF is the deliverable)
+├── PLAN.md
+└── README.md
 ```
 
----
+Folders are created only when they get content. The demo video is submitted in the zip and is not kept in git.
 
-## 3. Phases (follow in order)
-
-### Phase A – Circuit build (Task 1, 15 marks) 🧑
-
-**A1. Create the project (Proteus 8.5)**
-1. *File → New Project* → Name `IT6512_I2C_Velocity`, Path `E:\MSC\IT6512\Assignment1-Proteus\Proteus\proteus` → **Next**
-2. Schematic: *Create a schematic from the selected template* → **Landscape A3** → **Next**
-3. PCB: *Do not create a PCB layout* → **Next**
-4. Firmware: *No Firmware Project* → **Next** → **Finish**
-
-**A2. Place parts**
-
-In *Component Mode*, press **P** (Pick Devices) and type each keyword:
-
-| Keyword | Qty | Ref |
-|---|---|---|
-| ATMEGA328P | 2 | U1 = MASTER, U2 = SLAVE (set in *Edit Properties → Part Reference*) |
-| L298 | 1 | U3 |
-| MOTOR-ENCODER | 1 | M1 |
-| LM016L | 1 | LCD1 |
-| POT-HG | 1 | RV1 |
-| SW-SPDT | 1 | SW1 |
-| RES | 2 | R1, R2 = 4.7k |
-| 1N4007 | 4 | D1–D4 |
-
-Then in the left toolbar:
-- *Virtual Instruments Mode* → **I2C DEBUGGER**, **OSCILLOSCOPE**, **VIRTUAL TERMINAL** ×2
-- *Terminals Mode* → **POWER** (labels `+5V`, `+12V`), **GROUND**, **DEFAULT** (for net labels)
-
-**A3. Wire it** (use net-label terminals, not long wires, between blocks)
-- **I2C:** PC4/SDA of both MCUs → `SDA`. PC5/SCL of both → `SCL`. R1 from `SDA` to `+5V`, R2 from `SCL` to `+5V`. I2C Debugger SDA → `SDA`, SCL → `SCL`.
-- **Slave → L298:** PB1 → `PWM` → ENA. PD7 → `DIR1` → IN1. PB0 → `DIR2` → IN2. L298 VS → `+12V`, VCC → `+5V`, GND and SENSA → GND.
-- **L298 → motor:** OUT1 → motor terminal 1, OUT2 → motor terminal 2.
-- **Flyback diodes:** each output gets one diode to +12V (cathode on +12V) and one from GND (anode on GND).
-- **Encoder:** motor encoder outputs → `ENC_A` → PD2 and `ENC_B` → PD3 (hover the motor pins to read their names; leave the index pin unconnected).
-- **Master UI:**
-  - POT-HG ends to `+5V` and GND, wiper → `SP_POT` → PC0.
-  - SW-SPDT common → `DIR_SW` → PD6, one throw to GND, the other to `+5V`.
-  - LM016L: VSS and VEE → GND, VDD → `+5V`, RW → GND, RS → PB4, E → PB3, D4–D7 → PD5, PD4, PD3, PD2. Leave D0–D3 open.
-- **Virtual Terminals:** master TXD → VT1 RXD and VT1 TXD → master RXD. Slave TXD → VT2 RXD.
-- **Oscilloscope:** A = `PWM`, B = `ENC_A`, C = `ENC_B`, D = `DIR1`.
-- **RESET pin** (PC6/RESET) of each MCU → `+5V`.
-- Check *Design → Configure Power Rails*: the `+12V` net must be on a 12 V rail, and VCC/GND hold the MCUs' hidden power pins.
-
-**A4. Set properties** (double-click each part)
-- **Each ATMEGA328P:**
-  - *Program File* = `master.hex` / `slave.hex` (file name only; the hex sits next to the .pdsprj)
-  - *CKSEL Fuses* = `(1111) Ext. Crystal 8.0- MHz`
-  - *CLKDIV8* = `(1) Unprogrammed`
-  - *Advanced Properties → Clock Frequency* = `16MHz`
-- **MOTOR-ENCODER:** Nominal Voltage `12V`, *Pulses per Revolution* `100`.
-  - Record the default *Zero Load RPM* and *Load/Max Torque %*.
-  - If Zero Load RPM is below ~300, raise it to 300–400 so ±250 RPM is reachable, and state this in the report.
-- **Virtual Terminals:** Baud 9600, Data 8, Parity NONE, Stop 1.
-- **R1/R2:** 4.7k.
-
-**A5. Evidence:** *File → Export Graphics → Export Bitmap* (or a screenshot) of the full sheet, plus zoomed views → `report/figures/schematic_*.png`.
-
-✅ Commit: `feat(proteus): add schematic for master, slave, L298 and encoder motor`
+Arduino requires each sketch to sit in a folder with the same name (`master/master.ino`). The `.hex` is exported next to the `.ino`, and the Proteus program file points to `master\master.ino.standard.hex`, a sub-folder of the project, so the zip opens and runs without changes.
 
 ---
 
-### Phase B – I2C link and watchdog (Task 2, 20 marks)
+## 3. Design (from the brief)
 
-**B1. 🤖 Write the code**
-- `slave.ino`: Wire slave 0x08, frame validation, watchdog, status frame, CSV log. The motor is still open loop (duty ∝ SP).
-- `master.ino`: pot/switch read, LCD driver, 100 ms command + read-back, checksum check, serial commands.
-- `scripts/update_hex.bat`
+### Pin allocation
 
-**B2. 🧑 Build (Arduino IDE 1.8.19)** – repeat for each sketch:
-1. *File → Open* → `firmware\master\master.ino`
-2. *Tools → Board → Arduino AVR Boards → **Arduino Uno***
-3. *Sketch → **Export compiled Binary*** (Ctrl+Alt+S). This writes `master.ino.standard.hex` and `master.ino.with_bootloader.hex` into the sketch folder.
-4. Double-click `scripts\update_hex.bat`. It copies the **standard** hex (not the bootloader one) to `proteus\master.hex` / `slave.hex`.
+| Board | Arduino pin | ATMEGA328P pin (Proteus) | Net | Brief reference |
+|---|---|---|---|---|
+| Slave | D2 | PD2/INT0 | ENC_A | "encoder A, B to pins 2, 3" |
+| Slave | D3 | PD3/INT1 | ENC_B | " |
+| Slave | D9 | PB1/OC1A | PWM | "PWM on pin 9" |
+| Slave | D7, D8 | PD7, PB0 | DIR1, DIR2 | "DIR on pins 7, 8" |
+| Both | A4, A5 | PC4/SDA, PC5/SCL | SDA, SCL | "A4 = SDA, A5 = SCL, 4.7 kΩ pull-ups" |
+| Both | D0, D1 | PD0/RXD, PD1/TXD | – | Virtual Terminal, 9600 baud |
+| Master | A0 | PC0/ADC0 | SP_POT | "Reads setpoint pot (A0)" |
+| Master | D6 | PD6 | DIR_SW | Direction / enable switch |
+| Master | D12, D11 | PB4, PB3 | LCD_RS, LCD_E | 16×2 LCD |
+| Master | D5, D4, D3, D2 | PD5, PD4, PD3, PD2 | LCD_D4…D7 | 16×2 LCD |
 
-**B3. 🧑 Run and capture**
-1. Press ▶ (bottom-left). If an instrument window is closed, reopen it from the *Debug* menu (*I2C Debugger*, *Virtual Terminal*, *Digital Oscilloscope*).
-2. **I2C Debugger:** pause (⏸) and expand one write frame and one read frame. Screenshot → `report/figures/i2c_write.png`, `i2c_read.png`. 🤖 then annotates each byte and checks the CHK by hand.
-3. **Watchdog test:** click in VT1, type `P`. VT2 should show the fault bit set and duty → 0 about 500 ms (sim time) after the last frame, and the LCD shows `WDOG`. Screenshot the VT2 log, LCD and scope.
-4. **Bad-checksum test:** type `X`. VT2 should log `BADCHK` and the watchdog timer must not reset.
+(The master's D2/D3 are free because only the slave reads the encoder.)
 
-✅ Commits: `feat(slave): add I2C slave with frame validation and watchdog`, `feat(master): add command loop, LCD driver and serial test commands`, `test(i2c): add debugger captures and watchdog evidence`
+### I2C frames (exactly as in the brief)
+- **Command**, master → 0x08, every 100 ms: `CMD=0x01 | SP_HI | SP_LO | FLAGS | CHK`. FLAGS bit0 = enable, bit1 = reset integrator.
+- **Status**, 5-byte read from 0x08 after each command: `STATUS | PV_HI | PV_LO | DUTY | CHK`. STATUS bit0 = running, bit1 = watchdog fault, bit2 = output saturated.
+- `CHK = b0 ^ b1 ^ b2 ^ b3`. Signed 16-bit, high byte first. SP clamped to −250…+250.
+- A wrong length or checksum means the frame is ignored and does **not** reset the watchdog.
+- `onReceive` / `onRequest` only copy bytes. All maths happens in `loop()`.
+- Watchdog: no valid command for 500 ms → motor stopped, fault bit set.
 
----
+### Master operation
+- Normal: the pot gives |SP| (0–250 RPM), the switch gives the direction. The LCD shows SP, PV and duty.
+- Typed keys in the master's Virtual Terminal, needed to produce the brief's evidence repeatably:
+  - `S`: 0 → 150 RPM step (Task 4, and the Task 5 load test)
+  - `T`: sequence 150 → 80 → −100 → 0 RPM (Task 5)
+  - `P`: pause/resume sending, "watchdog stopping the motor when the master is paused" (Task 2)
+  - `X`: send one frame with a wrong checksum, "discard bad frames" proof (Task 2)
+  - `M`: back to pot control
 
-### Phase C – Speed measurement (Task 3, 15 marks)
+### Speed measurement
+ω_RPM = 60·Δn / (m·N·T), N = 100, T = 0.05 s → x1 = 12, x2 = 6, **x4 = 3 RPM/count**.
 
-1. 🤖 Add the x4 quadrature ISR and the 50 ms RPM calculation to `slave.ino`. Build a **test mode** where `D<duty>` sets a fixed PWM.
-2. 🧑 Export hex, run, and capture the scope screenshot of A/B in forward **and** reverse (A leads B vs. B leads A) → `report/figures/encoder_fwd.png`, `encoder_rev.png`.
-3. 🧑 At duty 64, 128 and 192, write down the RPM shown on the motor part and the slave's PV → `data/accuracy.csv`.
-4. 🤖 Write the resolution calculation (x1/x2/x4) and the accuracy table with % error.
+x4 is chosen because the SSE target is ≤ 3 RPM. A and B both use `CHANGE` interrupts, and the direction comes from the quadrature phase. Counts are read with interrupts briefly disabled.
 
-✅ Commit: `feat(slave): add x4 quadrature decoding and 50 ms speed measurement`
-
----
-
-### Phase D – Velocity controller (Task 4, 25 marks)
-
-1. **Open loop:** 🧑 set duty 51, 102, 153, 204 and 255 (20–100 %) and log steady RPM → `data/openloop.csv`. 🤖 plots it and comments on linearity and dead band.
-2. 🤖 Add the PI controller with clamp, anti-windup and saturation bit. Gains are set over serial (`KP<value>`, `KI<value>`), so each tuning step doesn't need a rebuild.
-3. **Tuning loop.** For each gain set:
-   - 🧑 type the gains, then `S`
-   - copy the VT2 log (right-click in the VT window → copy) to `data/step_kpX_kiY.csv`
-   - 🤖 runs `step_metrics.py` and adds a row to the tuning table
-4. Order of tuning:
-   - P only: 3–4 Kp values, which show the SSE
-   - add Ki and increase it until SSE ≤ 3 RPM
-   - trim to meet **OS ≤ 10 %, Ts(5 %) ≤ 1.0 s, SSE ≤ 3 RPM**
-   - add `Kff` only if needed
-5. 🤖 Final step plot → `report/figures/step_final.png`
-
-✅ Commits: `feat(slave): add PI velocity controller with anti-windup`, `feat(scripts): add log plotting and step metrics`, `test(controller): add open-loop and tuning logs`
-
----
-
-### Phase E – Tracking and load (Task 5, 10 marks)
-
-1. 🧑 Type `T` and save the log → `data/tracking.csv`. 🤖 plots SP and PV on one graph.
-2. 🧑 Stop the sim and raise the MOTOR-ENCODER *Load/Max Torque %* by 50 % (e.g. 20 → 30; note both values). Run `S` → `data/step_loaded.csv`. 🤖 overlays it on the unloaded step.
-3. 🤖 Explanation: extra load torque needs a constant extra duty. P-only can supply it only through a persistent error. The integrator builds up exactly that duty, so the error goes to zero.
-
-✅ Commit: `test(controller): add tracking and load disturbance results`
+### Controller (slave, every 50 ms)
+- `CONTROL_MODE` constant in `slave.ino`:
+  - `OPEN_LOOP`: duty = |SP| (SP 50…250 used as a duty value for the open-loop table)
+  - `P`
+  - `PI`
+  - `PID` only if PI cannot meet the targets
+- Brief formula: u[k] = Kp·e[k] + Ki·T·Σe[j]. Output limited to ±255 (|u| on D9, sign on D7/D8).
+- Anti-windup (brief): stop adding to Σe while the output is saturated.
+- Targets for 0 → 150 RPM: **OS ≤ 10 %, Ts(±5 %) ≤ 1.0 s, SSE ≤ 3 RPM**
+- Slave log line every 50 ms: `t_ms,SP,PV,duty` (brief: "log time, setpoint and measured speed")
 
 ---
 
-### Phase F – Report, video, packaging (Task 6, 15 marks)
+## 4. Tasks, steps and commits
 
-1. 🤖 Draft the report (≤ 12 pages + appendices) in the brief's 8-section structure, with pin tables, block diagram, frames, resolution, tuning table and plots. Include an AI-assistance acknowledgement, as the brief requires. 🧑 Review it, add your student ID, and export it to PDF.
-2. 🧑 Record the video (≤ 3 min) with Snipping Tool → Record or Win+G: schematic tour → pot change → LCD → I2C Debugger → `P` watchdog.
-3. 🤖 Packaging script → `IT6512_<StudentID>_I2C_Velocity.zip`: `.pdsprj`, `master.ino`, `slave.ino`, both `.hex`, PDF and video.
-4. 🧑 Unzip into a fresh folder, open the `.pdsprj` and press ▶. It must run without changes.
+🧑 = you in Proteus / Arduino IDE · 🤖 = Claude (code, scripts, report draft)
 
-✅ Commits: `docs(report): add final report`, `chore: add submission packaging script`
+### Task 1 – Circuit build (15)
+1. 🧑 Proteus 8.5:
+   - *File → New Project*
+   - Name `IT6512_I2C_Velocity`, Path = this repo folder
+   - *Landscape A3* template
+   - *Do not create a PCB layout*
+   - *No Firmware Project*
+   - *Finish*
+2. 🧑 Press **P** and pick, as in the brief's parts table:
+   - ATMEGA328P ×2 (references MASTER, SLAVE)
+   - L298
+   - MOTOR-ENCODER
+   - LM016L
+   - POT-HG
+   - SW-SPDT
+   - RES ×2 (4.7k)
+   - 1N4007 ×4
+   - POWER terminal `+12V`
+3. 🧑 From *Virtual Instruments Mode*: I2C DEBUGGER, OSCILLOSCOPE, VIRTUAL TERMINAL ×2.
+4. 🧑 Wire using net-label terminals **SDA, SCL, PWM, DIR1, DIR2, ENC_A, ENC_B** (the brief names these):
+   - pull-ups from SDA/SCL to +5V
+   - all grounds common
+   - L298: VS = +12V, VCC = +5V, SENSE pins to GND
+   - 4 × 1N4007 flyback diodes on OUT1/OUT2
+   - I2C Debugger on SDA/SCL
+   - scope A = PWM, B = ENC_A, C = ENC_B
+5. 🧑 Properties:
+   - each ATMEGA328P: *Program File* = `master\master.ino.standard.hex` / `slave\slave.ino.standard.hex`, *CKSEL* = `(1111) Ext. Crystal 8.0- MHz`, *CLKDIV8* = `(1) Unprogrammed`, *Clock Frequency* = `16MHz`
+   - MOTOR-ENCODER: 12 V, PPR = 100 (note the default Zero-Load RPM and Load %)
+   - Virtual Terminals: 9600 8N1
+6. Evidence: a schematic screenshot with every net labelled → `report/`
+
+Commit: `feat(proteus): add circuit schematic with labelled nets`
+
+### Task 2 – I2C link (20)
+1. 🤖 `slave.ino`: Wire slave 0x08, `onReceive`/`onRequest`, checksum check, SP clamp, 500 ms watchdog, status frame. 🤖 `master.ino`: pot/switch, LCD, 100 ms command + status read, checksum check, keys.
+2. 🧑 Arduino IDE 1.8.19, for each sketch:
+   - *File → Open*
+   - *Tools → Board → Arduino AVR Boards → Arduino Uno*
+   - *Sketch → Export compiled Binary* (Ctrl+Alt+S)
+3. 🧑 Proteus ▶:
+   - I2C Debugger capture of one write and one read frame → 🤖 byte-by-byte annotation
+   - Key `P`: the slave stops the motor after 500 ms and sets the fault bit (VT log + LCD)
+   - Key `X`: the frame is discarded
+
+Commits: `feat(slave): add I2C slave with checksum and watchdog`, `feat(master): add setpoint input, LCD and I2C command loop`
+
+### Task 3 – Speed measurement (15)
+1. 🤖 x4 quadrature ISR on pins 2/3 with direction. RPM every 50 ms.
+2. 🧑 Oscilloscope screenshot of A and B (forward and reverse).
+3. 🧑 Measured RPM vs. the motor model's displayed RPM at three duties → 🤖 table and % error.
+4. 🤖 Resolution calculation (x1, x2, x4) and justification.
+
+Commit: `feat(slave): add quadrature speed measurement`
+
+### Task 4 – Velocity controller (25)
+1. 🧑 `OPEN_LOOP`: speed at 5 duties → 🤖 linearity / dead-band comment.
+2. 🤖 P, then PI, every 50 ms, with output limits and anti-windup.
+3. 🧑 For each gain set: edit Kp/Ki in `slave.ino` → export → run `S` → copy the slave log to `data/`. 🤖 Compute rise, OS, Ts, SSE → tuning table.
+4. 🤖 Step-response plot of the final controller.
+
+Commits: `feat(slave): add P and PI velocity control with anti-windup`, `test(controller): add open-loop and tuning results`
+
+### Task 5 – Tracking and disturbance (10)
+1. 🧑 Key `T` → log → 🤖 SP and PV on one graph.
+2. 🧑 MOTOR-ENCODER *Load/Max Torque %* × 1.5 → key `S` → 🤖 compare with the unloaded step.
+3. 🤖 Explain why the integral term matters under load.
+
+Commit: `test(controller): add tracking and load results`
+
+### Task 6 – Report and demonstration (15)
+1. 🤖 Draft the report (≤ 12 pages + appendices) in the brief's 8 sections. 🧑 Review it in your own words and export to PDF.
+2. 🧑 Video ≤ 3 min: setpoint change, LCD, I2C Debugger.
+3. 🧑 Zip `IT6512_<StudentID>_I2C_Velocity.zip`: .pdsprj, master.ino, slave.ino, both .hex, report PDF, video. Unzip it to a new folder and check it runs.
+4. 🧑 Viva preparation: be able to explain the code, the frames and the tuning.
+
+Commit: `docs(report): add final report`
 
 ---
-
-## 4. Risks
-
-| Risk | Mitigation |
-|---|---|
-| MCU runs 8× slow | CLKDIV8 must be *Unprogrammed* and Clock Frequency 16 MHz (A4) |
-| Wrong hex loaded | Always use `*.ino.standard.hex` via `update_hex.bat` |
-| Sim slower than real time | Report times from the slave's `millis()` column (sim time) |
-| VT log loses lines at 9600 | Short CSV lines; runs of about 5 s |
-| PI alone misses Ts ≤ 1 s | Add feed-forward from the open-loop slope |
-| .pdsprj does not open on the marker's PC | Hex beside the project, file-name-only paths; test the unzipped copy |
 
 ## 5. Progress
 
-- [x] 0 Plan and toolchain verified
-- [ ] A Circuit
-- [ ] B I2C link + watchdog
-- [ ] C Speed measurement
-- [ ] D Controller tuning
-- [ ] E Tracking + load
-- [ ] F Report, video, zip
+| Date | Step | Status |
+|---|---|---|
+| 2026-11-26 | Brief read; plan written | ✅ Done |
+| 2026-11-26 | Tools verified: Proteus 8.5 SP0, Arduino IDE 1.8.19, Python 3.10 | ✅ Done |
+| 2026-11-26 | Plan aligned to the brief; repo trimmed to deliverables only | ✅ Done |
+| – | Task 1 Circuit build | ⏳ Next (🧑 Proteus) |
+| – | Task 2 I2C link | ⬜ Code can start in parallel with Task 1 |
+| – | Task 3 Speed measurement | ⬜ |
+| – | Task 4 Velocity controller | ⬜ |
+| – | Task 5 Tracking and load | ⬜ |
+| – | Task 6 Report, video, zip | ⬜ |

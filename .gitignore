@@ -1,24 +1,16 @@
-# Proteus temporary / backup files
+# Proteus 8.5 backup / workspace files
 *.pdsbak
-*.pdsprj.*.workspace
 *.workspace
 Project Backups/
 *.DBK
 *.LCK
 
-# Arduino build output (keep only exported .hex in hex/)
-build/
-firmware/**/*.elf
-firmware/**/*.bin
-firmware/**/*.hex
+# Arduino IDE 1.8.19 export: keep *.ino.standard.hex, drop the bootloader copy
+*.with_bootloader.hex
+*.elf
 
 # Python
 __pycache__/
-.venv/
-
-# Large media
-video/*.mp4
-video/*.mkv
 
 # OS
 Thumbs.db
