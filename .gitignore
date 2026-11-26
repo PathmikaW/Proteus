@@ -1,0 +1,25 @@
+# Proteus temporary / backup files
+*.pdsbak
+*.pdsprj.*.workspace
+*.workspace
+Project Backups/
+*.DBK
+*.LCK
+
+# Arduino build output (keep only exported .hex in hex/)
+build/
+firmware/**/*.elf
+firmware/**/*.bin
+firmware/**/*.hex
+
+# Python
+__pycache__/
+.venv/
+
+# Large media
+video/*.mp4
+video/*.mkv
+
+# OS
+Thumbs.db
+desktop.ini
