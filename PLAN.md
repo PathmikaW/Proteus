@@ -183,14 +183,41 @@ Commit: `docs(report): add final report`
 
 ## 5. Progress
 
-| Date | Step | Status |
+30 steps in total. We complete them one at a time in the chat.
+
+| Date | Milestone | Status |
 |---|---|---|
-| 2026-11-26 | Brief read; plan written | ✅ Done |
-| 2026-11-26 | Tools verified: Proteus 8.5 SP0, Arduino IDE 1.8.19, Python 3.10 | ✅ Done |
-| 2026-11-26 | Plan aligned to the brief; repo trimmed to deliverables only | ✅ Done |
-| – | Task 1 Circuit build | ⏳ Next (🧑 Proteus) |
-| – | Task 2 I2C link | ⬜ Code can start in parallel with Task 1 |
-| – | Task 3 Speed measurement | ⬜ |
-| – | Task 4 Velocity controller | ⬜ |
-| – | Task 5 Tracking and load | ⬜ |
-| – | Task 6 Report, video, zip | ⬜ |
+| 2026-11-26 | Brief read, tools verified (Proteus 8.5 SP0, Arduino IDE 1.8.19, Python 3.10), plan aligned to brief, repo pushed to GitHub | ✅ Done |
+
+| # | Task | Step | Status |
+|---|---|---|---|
+| 1 | Task 1 | Create the Proteus project | ⏳ In progress |
+| 2 | Task 1 | Place the two ATMEGA328P chips (MASTER, SLAVE) | ⬜ |
+| 3 | Task 1 | Place the motor parts: L298, MOTOR-ENCODER, 4× 1N4007 | ⬜ |
+| 4 | Task 1 | Place the operator parts: LM016L, POT-HG, SW-SPDT, 2× 4.7k | ⬜ |
+| 5 | Task 1 | Place power/ground terminals and virtual instruments | ⬜ |
+| 6 | Task 1 | Wire the I2C bus, pull-ups and I2C Debugger | ⬜ |
+| 7 | Task 1 | Wire slave → L298 → motor, flyback diodes, +12V | ⬜ |
+| 8 | Task 1 | Wire encoder A/B → slave pins 2/3 | ⬜ |
+| 9 | Task 1 | Wire master pot, switch and LCD | ⬜ |
+| 10 | Task 1 | Wire Virtual Terminals and oscilloscope | ⬜ |
+| 11 | Task 1 | Set part properties (16 MHz, 100 PPR, 9600 baud) | ⬜ |
+| 12 | Task 1 | Schematic screenshot + commit | ⬜ |
+| 13 | Task 2 | Arduino IDE 1.8.19 setup and first export | ⬜ |
+| 14 | Task 2 | slave.ino: I2C, checksum, watchdog → export hex | ⬜ |
+| 15 | Task 2 | master.ino: pot, switch, LCD, frames → export hex | ⬜ |
+| 16 | Task 2 | Load hex files in Proteus, first run | ⬜ |
+| 17 | Task 2 | I2C Debugger capture (write + read frame) | ⬜ |
+| 18 | Task 2 | Watchdog and bad-checksum tests + commit | ⬜ |
+| 19 | Task 3 | Add quadrature encoder code, run | ⬜ |
+| 20 | Task 3 | Oscilloscope screenshots (forward/reverse) | ⬜ |
+| 21 | Task 3 | Accuracy check at 3 duties + resolution calc + commit | ⬜ |
+| 22 | Task 4 | Open-loop test at 5 duties | ⬜ |
+| 23 | Task 4 | P controller runs | ⬜ |
+| 24 | Task 4 | PI tuning runs until targets met | ⬜ |
+| 25 | Task 4 | Final step-response plot + tuning table + commit | ⬜ |
+| 26 | Task 5 | Tracking sequence 150 → 80 → −100 → 0 | ⬜ |
+| 27 | Task 5 | 50 % load test + integral explanation + commit | ⬜ |
+| 28 | Task 6 | Write the report (8 sections, ≤ 12 pages) | ⬜ |
+| 29 | Task 6 | Record the demo video (≤ 3 min) | ⬜ |
+| 30 | Task 6 | Build the zip, test it, viva preparation | ⬜ |
