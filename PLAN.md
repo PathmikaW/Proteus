@@ -10,9 +10,11 @@ Marks: Circuit 15 · I2C 20 · Speed 15 · Controller 25 · Tracking/load 10 · 
 
 | Item | Status | Action |
 |---|---|---|
-| Proteus 8 (with Arduino Uno model) | Not found in default path | Confirm install + Arduino Uno library (built-in on 8.10+, or third-party library) |
-| Arduino IDE 2.x (or `arduino-cli`) | Not found on PATH | Install; used for *Sketch → Export Compiled Binary* → `.hex` |
-| Python 3.10 + pandas + matplotlib | Python present | `pip install pandas matplotlib` for plots |
+| Proteus 8 Professional | **8.5 (8.5.22067)** installed | Has MOTOR-ENCODER, L298, LM016L, POT-HG, SW-SPDT, 1N4007, ATMEGA328P, I2C Debugger, scope, Virtual Terminal |
+| Arduino Uno in Proteus | No "ARDUINO UNO" library part in 8.5 | Use the **Arduino 328** board (New Project → From Development Board), or ATMEGA328P parts at 16 MHz. Optional: third-party Arduino library |
+| Proteus licence | Not yet confirmed | Check that a project saves and a non-sample design simulates |
+| Arduino IDE | **1.8.19** (AVR core 1.8.3, Wire included) | Works. *Sketch → Export compiled Binary* gives the `.hex`. Brief says 2.x, but the output is the same |
+| Python 3.10 | pandas 2.2.1, matplotlib 3.7.2 | Ready |
 
 Check the MOTOR-ENCODER model first. Note its properties (nominal voltage, zero-load RPM, load %, pulses/rev, and whether it outputs A and B channels). Every later number depends on these.
 
