@@ -25,3 +25,7 @@ desktop.ini
 
 # Arduino IDE sketchbook folder (if the IDE sketchbook points here)
 arduino/
+
+# Demo video (submitted in the zip, not kept in git)
+*.mp4
+*.mkv

@@ -226,6 +226,6 @@ Note: the 5 V terminals are labelled **VCC** (Proteus default 5 V rail). A separ
 | 25 | Task 4 | Final step-response plot + tuning table + commit | ✅ Done |
 | 26 | Task 5 | Tracking sequence 150 → 80 → −100 → 0 | ✅ Done |
 | 27 | Task 5 | 50 % load test + integral explanation + commit | ✅ Done |
-| 28 | Task 6 | Write the report (8 sections, ≤ 12 pages) | ⏳ Draft written, being reviewed |
-| 29 | Task 6 | Record the demo video (≤ 3 min) | ⬜ |
+| 28 | Task 6 | Write the report (8 sections, ≤ 12 pages) | ✅ Done |
+| 29 | Task 6 | Record the demo video (≤ 3 min) | ⏳ Next |
 | 30 | Task 6 | Build the zip, test it, viva preparation | ⬜ |
