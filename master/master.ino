@@ -18,9 +18,14 @@
  * Test keys typed in the master's Virtual Terminal (9600 baud):
  *   S          step test: 0 RPM for 1 s, then 150 RPM          (Task 4)
  *   T          sequence 150 -> 80 -> -100 -> 0 RPM, 2 s each    (Task 5)
+ *   O          open-loop test: SP 50,100,150,200,250, 3 s each  (Task 4)
+              (slave built with CONTROL_MODE = MODE_OPEN_LOOP, so SP = duty)
  *   P          pause / resume I2C sending (watchdog test)       (Task 2)
  *   X          bad-checksum mode on / off (checksum test)       (Task 2)
- *   M          back to pot + switch control
+ *   M          pot + switch control
+ *
+ * At power-up the setpoint is 0 RPM (motor stopped) until a key is pressed,
+ * so every test starts from rest. Press M for pot + switch control.
  *   <number>   e.g. 120 or -80 then Enter: fixed setpoint
  *
  * Only the Arduino core and Wire library are used, so the LCD is driven by
@@ -57,9 +62,15 @@ const int16_t SEQ_SP[] = {150, 80, -100, 0};
 const uint8_t SEQ_LEN = 4;
 const unsigned long SEQ_STEP_MS = 2000;
 
+// Task 4 open-loop sequence (always increasing, so the motor is driven up
+// to each speed instead of coasting down to it)
+const int16_t OL_SP[] = {50, 100, 150, 200, 250};
+const uint8_t OL_LEN = 5;
+const unsigned long OL_STEP_MS = 3000;
+
 // ---------------- Setpoint source ----------------
-enum Mode { MODE_POT, MODE_FIXED, MODE_STEP, MODE_SEQUENCE };
-Mode mode = MODE_POT;
+enum Mode { MODE_POT, MODE_FIXED, MODE_STEP, MODE_SEQUENCE, MODE_OPEN_LOOP_TEST };
+Mode mode = MODE_FIXED;       // start stopped: fixedSp = 0
 unsigned long modeStartMs = 0;
 int16_t fixedSp = 0;
 
@@ -112,6 +123,10 @@ int16_t readSetpoint() {
     case MODE_SEQUENCE: {
       unsigned long i = t / SEQ_STEP_MS;
       return (i < SEQ_LEN) ? SEQ_SP[i] : 0;
+    }
+    case MODE_OPEN_LOOP_TEST: {
+      unsigned long i = t / OL_STEP_MS;
+      return (i < OL_LEN) ? OL_SP[i] : 0;
     }
     default: {                // MODE_POT
       int16_t mag = map(analogRead(PIN_POT), 0, 1023, 0, SP_MAX);
@@ -183,6 +198,9 @@ void handleSerial() {
     if (c == 'S') {
       startMode(MODE_STEP);
       Serial.println(F("# step test: 0 RPM for 1 s, then 150 RPM"));
+    } else if (c == 'O') {
+      startMode(MODE_OPEN_LOOP_TEST);
+      Serial.println(F("# open-loop test: 50,100,150,200,250 (3 s each)"));
     } else if (c == 'T') {
       startMode(MODE_SEQUENCE);
       Serial.println(F("# sequence: 150, 80, -100, 0 RPM (2 s each)"));
@@ -306,7 +324,7 @@ void setup() {
   lcdPrintLine(1, "I2C velocity");
   delay(500);
 
-  Serial.println(F("# master ready. Keys: S T P X M, or a setpoint + Enter"));
+  Serial.println(F("# master ready, SP = 0. Keys: M S T O P X, or SP + Enter"));
   Serial.println(F("t_ms,SP,PV,duty,status,errors"));
   modeStartMs = millis();
 }
