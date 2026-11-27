@@ -189,6 +189,7 @@ Note: the 5 V terminals are labelled **VCC** (Proteus default 5 V rail). A separ
 
 | Date | Milestone | Status |
 |---|---|---|
+| 2026-11-27 | Task 4 done: open-loop curve (strongly non-linear, 150 RPM needs duty ~200), 6 gain sets tried, final PI Kp=1.0 Ki=10.0: OS 6 %, Ts 0.75 s, SSE 0.0 RPM | ✅ Done |
 | 2026-11-27 | Task 3 done: x4 decoding (3 RPM/count), direction from phase, scope captures both ways, accuracy within 2 counts. Motor model changed to Load 20 % and Effective Mass 0.004 (default 0.01 too slow for Ts ≤ 1 s) | ✅ Done |
 | 2026-11-27 | Task 2 evidence captured: write/read frames, FLAGS=03 reset-integrator frame, watchdog test (master paused), bad-checksum test (frames ignored, watchdog trips) | ✅ Done |
 | 2026-11-27 | I2C link working both ways. Fix: I2C clock lowered to 10 kHz, because at 100 kHz the slave's first reply byte arrived one bit late in Proteus 8.5 | ✅ Done |
@@ -218,11 +219,11 @@ Note: the 5 V terminals are labelled **VCC** (Proteus default 5 V rail). A separ
 | 19 | Task 3 | Add quadrature encoder code, run | ✅ Done |
 | 20 | Task 3 | Oscilloscope screenshots (forward/reverse) | ✅ Done |
 | 21 | Task 3 | Accuracy check at 3 duties + resolution calc + commit | ✅ Done |
-| 22 | Task 4 | Open-loop test at 5 duties | ⏳ Next |
-| 23 | Task 4 | P controller runs | ⬜ |
-| 24 | Task 4 | PI tuning runs until targets met | ⬜ |
-| 25 | Task 4 | Final step-response plot + tuning table + commit | ⬜ |
-| 26 | Task 5 | Tracking sequence 150 → 80 → −100 → 0 | ⬜ |
+| 22 | Task 4 | Open-loop test at 5 duties | ✅ Done |
+| 23 | Task 4 | P controller runs | ✅ Done |
+| 24 | Task 4 | PI tuning runs until targets met | ✅ Done |
+| 25 | Task 4 | Final step-response plot + tuning table + commit | ✅ Done |
+| 26 | Task 5 | Tracking sequence 150 → 80 → −100 → 0 | ⏳ Next |
 | 27 | Task 5 | 50 % load test + integral explanation + commit | ⬜ |
 | 28 | Task 6 | Write the report (8 sections, ≤ 12 pages) | ⬜ |
 | 29 | Task 6 | Record the demo video (≤ 3 min) | ⬜ |

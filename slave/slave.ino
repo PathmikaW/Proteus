@@ -68,9 +68,9 @@ const uint8_t MODE_OPEN_LOOP = 0;
 const uint8_t MODE_P         = 1;
 const uint8_t MODE_PI        = 2;
 
-const uint8_t CONTROL_MODE = MODE_OPEN_LOOP;  // change for each test
-const float KP = 1.0;                         // proportional gain, duty per RPM
-const float KI = 0.0;                         // integral gain, duty per RPM.s
+const uint8_t CONTROL_MODE = MODE_PI;   // final controller (Task 4)
+const float KP = 1.0;      // proportional gain, duty per RPM (final)
+const float KI = 10.0;     // integral gain, duty per RPM.s (final)
 const float T_SAMPLE = SAMPLE_MS / 1000.0;    // T = 0.05 s
 
 float errorSum = 0;           // sum of e[j] for the integral term

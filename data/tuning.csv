@@ -1,0 +1,7 @@
+run,mode,Kp,Ki,pv_final_rpm,sse_rpm,overshoot_pct,rise_s,rise_ref,settling_5pct_s,meets_all,log_file
+P1,P,1.0,0.0,41.2,108.8,0.0,1.5,final,never,False,data/tune_P1_kp1.csv
+P2,P,2.0,0.0,73.2,76.8,0.0,0.1,final,never,False,data/tune_P2_kp2.csv
+P3,P,4.0,0.0,106.2,43.8,0.0,0.2,final,never,False,data/tune_P3_kp4.csv
+PI1,PI,2.0,4.0,150.2,0.2,2.0,0.85,SP,1.8,False,data/tune_PI1_kp2_ki4.csv
+PI2,PI,1.0,10.0,150.0,0.0,6.0,0.3,SP,0.75,True,data/tune_PI2_kp1_ki10.csv
+PI3,PI,2.0,10.0,150.4,0.4,6.0,0.4,SP,4.35,False,data/tune_PI3_kp2_ki10.csv
