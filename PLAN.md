@@ -189,6 +189,7 @@ Note: the 5 V terminals are labelled **VCC** (Proteus default 5 V rail). A separ
 
 | Date | Milestone | Status |
 |---|---|---|
+| 2026-11-27 | Task 6 done: report (PDF), demo video, submission zip IT6512_258843A_I2C_Velocity.zip built and tested from a fresh unzip | ✅ Done |
 | 2026-11-27 | Task 5 done: tracking 150/80/-100/0 plotted; +50 % load (20 -> 30 %) still 0 RPM SSE, integral raises duty 199 -> 210 | ✅ Done |
 | 2026-11-27 | Task 4 done: open-loop curve (strongly non-linear, 150 RPM needs duty ~200), 6 gain sets tried, final PI Kp=1.0 Ki=10.0: OS 6 %, Ts 0.75 s, SSE 0.0 RPM | ✅ Done |
 | 2026-11-27 | Task 3 done: x4 decoding (3 RPM/count), direction from phase, scope captures both ways, accuracy within 2 counts. Motor model changed to Load 20 % and Effective Mass 0.004 (default 0.01 too slow for Ts ≤ 1 s) | ✅ Done |
@@ -228,4 +229,4 @@ Note: the 5 V terminals are labelled **VCC** (Proteus default 5 V rail). A separ
 | 27 | Task 5 | 50 % load test + integral explanation + commit | ✅ Done |
 | 28 | Task 6 | Write the report (8 sections, ≤ 12 pages) | ✅ Done |
 | 29 | Task 6 | Record the demo video (≤ 3 min) | ✅ Done (4 min, kept by choice) |
-| 30 | Task 6 | Build the zip, test it, viva preparation | ⏳ Zip built, testing |
+| 30 | Task 6 | Build the zip, test it, viva preparation | ✅ Done |
