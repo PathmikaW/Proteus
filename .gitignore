@@ -6,7 +6,7 @@ Project Backups/
 *.LCK
 
 # Arduino IDE 1.8.19 export: keep *.ino.standard.hex, drop the bootloader copy
-*.with_bootloader.hex
+*with_bootloader*.hex
 *.elf
 
 # Python
@@ -22,3 +22,6 @@ desktop.ini
 # Raw bitmap exports (converted to PNG for the report)
 *.BMP
 *.bmp
+
+# Arduino IDE sketchbook folder (if the IDE sketchbook points here)
+arduino/
