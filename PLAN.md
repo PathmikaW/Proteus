@@ -189,6 +189,7 @@ Note: the 5 V terminals are labelled **VCC** (Proteus default 5 V rail). A separ
 
 | Date | Milestone | Status |
 |---|---|---|
+| 2026-11-27 | Task 3 done: x4 decoding (3 RPM/count), direction from phase, scope captures both ways, accuracy within 2 counts. Motor model changed to Load 20 % and Effective Mass 0.004 (default 0.01 too slow for Ts ≤ 1 s) | ✅ Done |
 | 2026-11-27 | Task 2 evidence captured: write/read frames, FLAGS=03 reset-integrator frame, watchdog test (master paused), bad-checksum test (frames ignored, watchdog trips) | ✅ Done |
 | 2026-11-27 | I2C link working both ways. Fix: I2C clock lowered to 10 kHz, because at 100 kHz the slave's first reply byte arrived one bit late in Proteus 8.5 | ✅ Done |
 | 2026-11-27 | Task 1 schematic complete: all nets labelled, 16 MHz clocks, 100 PPR, 9600 baud, exported to report/ | ✅ Done |
@@ -214,10 +215,10 @@ Note: the 5 V terminals are labelled **VCC** (Proteus default 5 V rail). A separ
 | 16 | Task 2 | Load hex files in Proteus, first run | ✅ Done |
 | 17 | Task 2 | I2C Debugger capture (write + read frame) | ✅ Done |
 | 18 | Task 2 | Watchdog and bad-checksum tests + commit | ✅ Done |
-| 19 | Task 3 | Add quadrature encoder code, run | ⏳ Next |
-| 20 | Task 3 | Oscilloscope screenshots (forward/reverse) | ⬜ |
-| 21 | Task 3 | Accuracy check at 3 duties + resolution calc + commit | ⬜ |
-| 22 | Task 4 | Open-loop test at 5 duties | ⬜ |
+| 19 | Task 3 | Add quadrature encoder code, run | ✅ Done |
+| 20 | Task 3 | Oscilloscope screenshots (forward/reverse) | ✅ Done |
+| 21 | Task 3 | Accuracy check at 3 duties + resolution calc + commit | ✅ Done |
+| 22 | Task 4 | Open-loop test at 5 duties | ⏳ Next |
 | 23 | Task 4 | P controller runs | ⬜ |
 | 24 | Task 4 | PI tuning runs until targets met | ⬜ |
 | 25 | Task 4 | Final step-response plot + tuning table + commit | ⬜ |
