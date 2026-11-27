@@ -5,6 +5,7 @@ Creates in report/:
   openloop.png        speed vs PWM duty, open loop (Task 4)
   tuning_compare.png  0 -> 150 RPM step for every gain set tried (Task 4)
   step_final.png      final PI controller step response with targets (Task 4)
+  tracking.png        setpoint sequence 150 -> 80 -> -100 -> 0 RPM (Task 5)
 
 All times are Proteus simulation time, measured from the step.
 Usage:  python scripts/plot_results.py
@@ -131,8 +132,38 @@ def plot_final():
     plt.close(fig)
 
 
+def plot_tracking():
+    rows = load(os.path.join(DATA, "tracking.csv"))
+    t0 = next(r[0] for r in rows if r[1] != 0)
+    t = [(r[0] - t0) / 1000 for r in rows]
+    fig, ax = plt.subplots(figsize=(8.5, 4))
+    ax.axhline(0, color=TEXT2, lw=0.8)
+    ax.step(t, [r[1] for r in rows], where="post", color=TEXT2, lw=1.4, ls="--", label="Setpoint SP")
+    ax.plot(t, [r[2] for r in rows], color=BLUE, lw=2, label="Measured speed PV")
+    for x, txt in [(0.05, "150"), (2.05, "80"), (4.05, "-100"), (6.05, "0")]:
+        ax.text(x, 168, f"SP {txt}", fontsize=8, color=TEXT2)
+    ax.annotate("undershoot to 45 RPM:\nintegral wound down\nwhile braking", (3.40, 45), xytext=(1.2, -70),
+                fontsize=8, color=TEXT, arrowprops=dict(arrowstyle="-", color=TEXT2, lw=0.8))
+    ax.annotate("reverses through 0", (4.22, 0), xytext=(4.45, 40), fontsize=8, color=TEXT,
+                arrowprops=dict(arrowstyle="-", color=TEXT2, lw=0.8))
+    ax.annotate("overshoot to +24, then slow\ncreep back to 0 as the\nintegral unwinds", (6.7, 24),
+                xytext=(7.4, 60), fontsize=8, color=TEXT,
+                arrowprops=dict(arrowstyle="-", color=TEXT2, lw=0.8))
+    ax.set_xlabel("Time from start of sequence (s, simulation time)")
+    ax.set_ylabel("Speed (RPM)")
+    ax.set_title("Tracking test: SP 150 -> 80 -> -100 -> 0 RPM, 2 s each (PI Kp = 1.0, Ki = 10.0)",
+                 fontsize=10, color=TEXT, loc="left")
+    ax.set_xlim(-0.25, t[-1])
+    ax.set_ylim(-140, 180)
+    ax.legend(loc="lower left", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(os.path.join(OUT, "tracking.png"))
+    plt.close(fig)
+
+
 if __name__ == "__main__":
     plot_openloop()
     plot_tuning()
     plot_final()
+    plot_tracking()
     print("figures written to", os.path.abspath(OUT))
