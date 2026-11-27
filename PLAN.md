@@ -189,6 +189,7 @@ Note: the 5 V terminals are labelled **VCC** (Proteus default 5 V rail). A separ
 
 | Date | Milestone | Status |
 |---|---|---|
+| 2026-11-27 | I2C link working both ways. Fix: I2C clock lowered to 10 kHz, because at 100 kHz the slave's first reply byte arrived one bit late in Proteus 8.5 | ✅ Done |
 | 2026-11-27 | Task 1 schematic complete: all nets labelled, 16 MHz clocks, 100 PPR, 9600 baud, exported to report/ | ✅ Done |
 | 2026-11-26 | Brief read, tools verified (Proteus 8.5 SP0, Arduino IDE 1.8.19, Python 3.10), plan aligned to brief, repo pushed to GitHub | ✅ Done |
 
@@ -206,11 +207,11 @@ Note: the 5 V terminals are labelled **VCC** (Proteus default 5 V rail). A separ
 | 10 | Task 1 | Wire Virtual Terminals and oscilloscope | ✅ Done |
 | 11 | Task 1 | Set part properties (16 MHz, 100 PPR, 9600 baud) | ✅ Done |
 | 12 | Task 1 | Schematic screenshot + commit | ✅ Done |
-| 13 | Task 2 | Arduino IDE 1.8.19 setup and first export | ⏳ Next |
-| 14 | Task 2 | slave.ino: I2C, checksum, watchdog → export hex | ⬜ |
-| 15 | Task 2 | master.ino: pot, switch, LCD, frames → export hex | ⬜ |
-| 16 | Task 2 | Load hex files in Proteus, first run | ⬜ |
-| 17 | Task 2 | I2C Debugger capture (write + read frame) | ⬜ |
+| 13 | Task 2 | Arduino IDE 1.8.19 setup and first export | ✅ Done |
+| 14 | Task 2 | slave.ino: I2C, checksum, watchdog → export hex | ✅ Done |
+| 15 | Task 2 | master.ino: pot, switch, LCD, frames → export hex | ✅ Done |
+| 16 | Task 2 | Load hex files in Proteus, first run | ✅ Done |
+| 17 | Task 2 | I2C Debugger capture (write + read frame) | ⏳ Next |
 | 18 | Task 2 | Watchdog and bad-checksum tests + commit | ⬜ |
 | 19 | Task 3 | Add quadrature encoder code, run | ⬜ |
 | 20 | Task 3 | Oscilloscope screenshots (forward/reverse) | ⬜ |

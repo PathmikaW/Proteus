@@ -86,6 +86,15 @@ uint8_t checksum(const uint8_t *f) {
   return f[0] ^ f[1] ^ f[2] ^ f[3];
 }
 
+// I2C clock = 10 kHz: SCL = 16 MHz / (16 + 2 * TWBR * 4) with prescaler 4.
+// At 100 kHz the slave could not load its first reply byte in time in the
+// Proteus 8.5 model (the reply arrived one bit late), so the bus is slowed.
+// One command + status exchange still takes only about 11 ms.
+void setI2cClock() {
+  TWSR = (TWSR & 0xFC) | 0x01;  // prescaler = 4
+  TWBR = 198;
+}
+
 // ---------------- Setpoint ----------------
 void startMode(Mode m) {
   mode = m;
@@ -135,9 +144,15 @@ void exchangeWithSlave() {
 
   Wire.beginTransmission(SLAVE_ADDRESS);
   Wire.write(f, FRAME_LEN);
-  Wire.endTransmission();
+  if (Wire.endTransmission() != 0) commErrors++;   // NACK or bus timeout
   resetIntegNext = false;
   lastSentSp = setpointRpm;
+
+  // Give the slave time to finish its onReceive handler before reading.
+  // The AVR Wire slave releases the bus before that handler has run, and
+  // the Proteus model does not stretch the clock, so an immediate read
+  // returned corrupted bytes.
+  delayMicroseconds(500);
 
   // read the 5-byte status frame
   uint8_t s[FRAME_LEN];
@@ -152,6 +167,12 @@ void exchangeWithSlave() {
   } else {
     commErrors++;
     linkOk = false;
+  }
+
+  // a bus timeout resets the TWI hardware to 100 kHz, so set 10 kHz again
+  if (Wire.getWireTimeoutFlag()) {
+    Wire.clearWireTimeoutFlag();
+    setI2cClock();
   }
 }
 
@@ -278,6 +299,8 @@ void setup() {
   pinMode(PIN_DIR_SW, INPUT);
   Serial.begin(9600);
   Wire.begin();                // master
+  setI2cClock();               // 10 kHz, see setI2cClock()
+  Wire.setWireTimeout(25000, true);  // 25 ms: never hang on a stuck bus
   lcdInit();
   lcdPrintLine(0, "IT6512 258843A");
   lcdPrintLine(1, "I2C velocity");
