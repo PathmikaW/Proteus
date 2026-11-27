@@ -14,10 +14,12 @@
  *   - Speed in RPM over a fixed 50 ms sample: RPM = 60 * dn / (4 * N * T)
  *   - Serial log every 50 ms at 9600 baud: t_ms,SP,PV,duty,status
  *
- * Stage 2 (Task 3): speed is measured, but there is still no speed loop.
- * The PWM duty follows |SP| (open loop) so the measured speed can be
- * compared with the motor model at fixed duties. The PI controller
- * (Task 4) comes next.
+ *   - Velocity control every 50 ms (CONTROL_MODE below):
+ *       OPEN_LOOP : duty = |SP|            (open-loop test, Task 4)
+ *       P         : u = Kp*e
+ *       PI        : u = Kp*e + Ki*T*sum(e)  (final controller)
+ *     Output limited to +-255, integrator anti-windup by conditional
+ *     integration (the sum is not increased while the output saturates).
  */
 
 #include <Wire.h>
@@ -61,6 +63,18 @@ const unsigned long WATCHDOG_MS = 500;  // command timeout
 const int16_t SP_MAX  = 250;            // setpoint limit, RPM
 const int16_t PWM_MAX = 255;            // analogWrite range
 
+// ---------------- Controller selection and gains ----------------
+const uint8_t MODE_OPEN_LOOP = 0;
+const uint8_t MODE_P         = 1;
+const uint8_t MODE_PI        = 2;
+
+const uint8_t CONTROL_MODE = MODE_OPEN_LOOP;  // change for each test
+const float KP = 1.0;                         // proportional gain, duty per RPM
+const float KI = 0.0;                         // integral gain, duty per RPM.s
+const float T_SAMPLE = SAMPLE_MS / 1000.0;    // T = 0.05 s
+
+float errorSum = 0;           // sum of e[j] for the integral term
+
 // ---------------- Shared with the I2C handlers ----------------
 // The handlers only copy bytes; all checking is done in loop().
 volatile uint8_t rxFrame[FRAME_LEN];
@@ -74,7 +88,7 @@ bool    enabled       = false;
 bool    watchdogFault = false;
 int16_t speedRpm      = 0;      // measured speed, RPM
 uint8_t duty          = 0;      // present PWM duty 0-255
-bool    saturated     = false;  // used by the PI controller in Task 4
+bool    saturated     = false;  // controller output at the PWM limit
 uint8_t statusByte    = 0;
 
 // encoder count, changed only inside the encoder interrupt
@@ -152,7 +166,7 @@ void handleCommand() {
   setpointRpm = constrain(sp, -SP_MAX, SP_MAX);           // clamp to +-250 RPM
   enabled = (f[3] & FLAG_ENABLE) != 0;
   if (f[3] & FLAG_RESET_INTEG) {
-    // integrator reset - used once the PI controller is added (Task 4)
+    errorSum = 0;               // master asked for an integrator reset
   }
 
   lastValidCmdMs = millis();
@@ -180,11 +194,42 @@ void setMotor(int16_t u) {
 
 // ---------------- Control step (every 50 ms) ----------------
 void controlStep() {
-  int16_t u = 0;
-  if (enabled && !watchdogFault) {
-    u = setpointRpm;            // Stage 2: duty follows |SP| (open loop)
+  // stopped by the master (enable = 0) or by the watchdog
+  if (!enabled || watchdogFault) {
+    errorSum = 0;
+    saturated = false;
+    setMotor(0);
+    return;
   }
-  setMotor(u);
+
+  if (CONTROL_MODE == MODE_OPEN_LOOP) {
+    saturated = false;
+    setMotor(setpointRpm);      // duty = |SP|, no feedback
+    return;
+  }
+
+  float e = (float)(setpointRpm - speedRpm);   // error, RPM
+  float u;
+
+  if (CONTROL_MODE == MODE_P) {
+    u = KP * e;
+  } else {
+    // PI: u[k] = Kp*e[k] + Ki*T*sum(e)
+    float newSum = errorSum + e;
+    u = KP * e + KI * T_SAMPLE * newSum;
+    if (u > PWM_MAX || u < -PWM_MAX) {
+      // anti-windup: output saturated, so do not add this error to the sum
+      u = KP * e + KI * T_SAMPLE * errorSum;
+    } else {
+      errorSum = newSum;
+    }
+  }
+
+  // limit the output to the PWM range
+  saturated = (u > PWM_MAX || u < -PWM_MAX);
+  if (u > PWM_MAX)  u = PWM_MAX;
+  if (u < -PWM_MAX) u = -PWM_MAX;
+  setMotor((int16_t)lround(u));
 }
 
 // ---------------- Status frame for the next master read ----------------
@@ -247,6 +292,7 @@ void loop() {
   // Watchdog: stop the motor if no valid command for 500 ms
   if (!watchdogFault && (millis() - lastValidCmdMs >= WATCHDOG_MS)) {
     watchdogFault = true;
+    errorSum = 0;
     setMotor(0);
     Serial.println(F("# watchdog timeout, motor stopped"));
   }
