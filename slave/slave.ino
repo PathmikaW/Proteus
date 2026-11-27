@@ -10,11 +10,14 @@
  *     CHK = byte0 XOR byte1 XOR byte2 XOR byte3
  *   - Watchdog: no valid command for 500 ms -> motor stopped, fault bit set
  *   - L298 drive: PWM on D9 (ENA), direction on D7 (IN1) and D8 (IN2)
+ *   - Encoder A/B on D2/D3 (INT0/INT1), x4 quadrature decoding with direction
+ *   - Speed in RPM over a fixed 50 ms sample: RPM = 60 * dn / (4 * N * T)
  *   - Serial log every 50 ms at 9600 baud: t_ms,SP,PV,duty,status
  *
- * Stage 1 (Task 2): there is no speed loop yet. The PWM duty simply follows
- * |SP| so that the watchdog test can show the motor being stopped.
- * Speed measurement (Task 3) and the PI controller (Task 4) come next.
+ * Stage 2 (Task 3): speed is measured, but there is still no speed loop.
+ * The PWM duty follows |SP| (open loop) so the measured speed can be
+ * compared with the motor model at fixed duties. The PI controller
+ * (Task 4) comes next.
  */
 
 #include <Wire.h>
@@ -35,6 +38,22 @@ const uint8_t STATUS_SATURATED = 0x04;  // STATUS bit 2
 const uint8_t PIN_PWM  = 9;   // L298 ENA
 const uint8_t PIN_DIR1 = 7;   // L298 IN1
 const uint8_t PIN_DIR2 = 8;   // L298 IN2
+const uint8_t PIN_ENC_A = 2;  // encoder channel A (INT0)
+const uint8_t PIN_ENC_B = 3;  // encoder channel B (INT1)
+
+// ---------------- Encoder ----------------
+const long ENC_PPR = 100;     // pulses per revolution (MOTOR-ENCODER property)
+const long ENC_DECODE = 4;    // x4: count every edge of A and B
+const int8_t ENC_SIGN = 1;    // set to -1 if forward drive reads negative
+
+// x4 quadrature table, index = (old AB << 2) | new AB, AB = (A << 1) | B
+// +1 for one step forward (A leads B), -1 for one step reverse, 0 = no move
+const int8_t QUAD_TABLE[16] = {
+   0, -1, +1,  0,
+  +1,  0,  0, -1,
+  -1,  0,  0, +1,
+   0, +1, -1,  0
+};
 
 // ---------------- Timing and limits ----------------
 const unsigned long SAMPLE_MS   = 50;   // control / log period
@@ -53,10 +72,15 @@ volatile uint8_t txFrame[FRAME_LEN];
 int16_t setpointRpm   = 0;
 bool    enabled       = false;
 bool    watchdogFault = false;
-int16_t speedRpm      = 0;      // measured speed, added in Task 3
+int16_t speedRpm      = 0;      // measured speed, RPM
 uint8_t duty          = 0;      // present PWM duty 0-255
 bool    saturated     = false;  // used by the PI controller in Task 4
 uint8_t statusByte    = 0;
+
+// encoder count, changed only inside the encoder interrupt
+volatile long encoderCount = 0;
+volatile uint8_t encoderState = 0;
+long lastCount = 0;
 
 unsigned long lastValidCmdMs = 0;
 unsigned long lastSampleMs   = 0;
@@ -65,6 +89,27 @@ unsigned int  badFrames      = 0;
 // XOR checksum of the first four bytes of a frame
 uint8_t checksum(const uint8_t *f) {
   return f[0] ^ f[1] ^ f[2] ^ f[3];
+}
+
+// ---------------- Encoder interrupt (both A and B, every edge) ----------------
+void encoderISR() {
+  uint8_t a = (PIND >> 2) & 0x01;          // D2 = PD2
+  uint8_t b = (PIND >> 3) & 0x01;          // D3 = PD3
+  uint8_t newState = (a << 1) | b;
+  encoderCount += QUAD_TABLE[(encoderState << 2) | newState];
+  encoderState = newState;
+}
+
+// ---------------- Speed over the fixed 50 ms sample ----------------
+void measureSpeed() {
+  noInterrupts();                          // read the count in one piece
+  long count = encoderCount;
+  interrupts();
+
+  long dn = count - lastCount;             // counts in this sample
+  lastCount = count;
+  // RPM = 60 * dn / (m * N * T), T = SAMPLE_MS / 1000 s
+  speedRpm = (int16_t)(ENC_SIGN * dn * 60000L / (ENC_DECODE * ENC_PPR * (long)SAMPLE_MS));
 }
 
 // ---------------- I2C handlers (kept short) ----------------
@@ -137,7 +182,7 @@ void setMotor(int16_t u) {
 void controlStep() {
   int16_t u = 0;
   if (enabled && !watchdogFault) {
-    u = setpointRpm;            // Stage 1: duty follows |SP| (open loop)
+    u = setpointRpm;            // Stage 2: duty follows |SP| (open loop)
   }
   setMotor(u);
 }
@@ -180,6 +225,12 @@ void setup() {
   pinMode(PIN_DIR2, OUTPUT);
   setMotor(0);
 
+  pinMode(PIN_ENC_A, INPUT);
+  pinMode(PIN_ENC_B, INPUT);
+  encoderState = (digitalRead(PIN_ENC_A) << 1) | digitalRead(PIN_ENC_B);
+  attachInterrupt(digitalPinToInterrupt(PIN_ENC_A), encoderISR, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_ENC_B), encoderISR, CHANGE);
+
   Serial.begin(9600);
   Serial.println(F("# slave 0x08 ready"));
   Serial.println(F("t_ms,SP,PV,duty,status"));
@@ -203,6 +254,7 @@ void loop() {
   // Fixed 50 ms sample period
   if (millis() - lastSampleMs >= SAMPLE_MS) {
     lastSampleMs += SAMPLE_MS;
+    measureSpeed();
     controlStep();
     updateStatusFrame();
     logSample();
