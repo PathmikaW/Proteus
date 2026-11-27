@@ -27,7 +27,7 @@ Marks: Task 1 Circuit 15 · Task 2 I2C 20 · Task 3 Speed 15 · Task 4 Controlle
 
 ```
 Proteus/
-├── IT6512_I2C_Velocity.pdsprj   Proteus project (deliverable)
+├── 258843A.pdsprj   Proteus project (deliverable)
 ├── master/master.ino            + master.ino.standard.hex (deliverable)
 ├── slave/slave.ino              + slave.ino.standard.hex  (deliverable)
 ├── data/                        CSV logs copied from the slave's Virtual Terminal
@@ -174,7 +174,7 @@ Commit: `test(controller): add tracking and load results`
 ### Task 6 – Report and demonstration (15)
 1. 🤖 Draft the report (≤ 12 pages + appendices) in the brief's 8 sections. 🧑 Review it in your own words and export to PDF.
 2. 🧑 Video ≤ 3 min: setpoint change, LCD, I2C Debugger.
-3. 🧑 Zip `IT6512_<StudentID>_I2C_Velocity.zip`: .pdsprj, master.ino, slave.ino, both .hex, report PDF, video. Unzip it to a new folder and check it runs.
+3. 🧑 Zip `IT6512_258843A_I2C_Velocity.zip`: .pdsprj, master.ino, slave.ino, both .hex, report PDF, video. Unzip it to a new folder and check it runs.
 4. 🧑 Viva preparation: be able to explain the code, the frames and the tuning.
 
 Commit: `docs(report): add final report`
@@ -183,27 +183,30 @@ Commit: `docs(report): add final report`
 
 ## 5. Progress
 
+Note: the 5 V terminals are labelled **VCC** (Proteus default 5 V rail). A separate `+5V` rail could not be merged with the chips' hidden VCC pins.
+
 30 steps in total. We complete them one at a time in the chat.
 
 | Date | Milestone | Status |
 |---|---|---|
+| 2026-11-27 | Task 1 schematic complete: all nets labelled, 16 MHz clocks, 100 PPR, 9600 baud, exported to report/ | ✅ Done |
 | 2026-11-26 | Brief read, tools verified (Proteus 8.5 SP0, Arduino IDE 1.8.19, Python 3.10), plan aligned to brief, repo pushed to GitHub | ✅ Done |
 
 | # | Task | Step | Status |
 |---|---|---|---|
-| 1 | Task 1 | Create the Proteus project | ⏳ In progress |
-| 2 | Task 1 | Place the two ATMEGA328P chips (MASTER, SLAVE) | ⬜ |
-| 3 | Task 1 | Place the motor parts: L298, MOTOR-ENCODER, 4× 1N4007 | ⬜ |
-| 4 | Task 1 | Place the operator parts: LM016L, POT-HG, SW-SPDT, 2× 4.7k | ⬜ |
-| 5 | Task 1 | Place power/ground terminals and virtual instruments | ⬜ |
-| 6 | Task 1 | Wire the I2C bus, pull-ups and I2C Debugger | ⬜ |
-| 7 | Task 1 | Wire slave → L298 → motor, flyback diodes, +12V | ⬜ |
-| 8 | Task 1 | Wire encoder A/B → slave pins 2/3 | ⬜ |
-| 9 | Task 1 | Wire master pot, switch and LCD | ⬜ |
-| 10 | Task 1 | Wire Virtual Terminals and oscilloscope | ⬜ |
-| 11 | Task 1 | Set part properties (16 MHz, 100 PPR, 9600 baud) | ⬜ |
-| 12 | Task 1 | Schematic screenshot + commit | ⬜ |
-| 13 | Task 2 | Arduino IDE 1.8.19 setup and first export | ⬜ |
+| 1 | Task 1 | Create the Proteus project | ✅ Done |
+| 2 | Task 1 | Place the two ATMEGA328P chips (MASTER, SLAVE) | ✅ Done |
+| 3 | Task 1 | Place the motor parts: L298, MOTOR-ENCODER, 4× 1N4007 | ✅ Done |
+| 4 | Task 1 | Place the operator parts: LM016L, POT-HG, SW-SPDT, 2× 4.7k | ✅ Done |
+| 5 | Task 1 | Place power/ground terminals and virtual instruments | ✅ Done |
+| 6 | Task 1 | Wire the I2C bus, pull-ups and I2C Debugger | ✅ Done |
+| 7 | Task 1 | Wire slave → L298 → motor, flyback diodes, +12V | ✅ Done |
+| 8 | Task 1 | Wire encoder A/B → slave pins 2/3 | ✅ Done |
+| 9 | Task 1 | Wire master pot, switch and LCD | ✅ Done |
+| 10 | Task 1 | Wire Virtual Terminals and oscilloscope | ✅ Done |
+| 11 | Task 1 | Set part properties (16 MHz, 100 PPR, 9600 baud) | ✅ Done |
+| 12 | Task 1 | Schematic screenshot + commit | ✅ Done |
+| 13 | Task 2 | Arduino IDE 1.8.19 setup and first export | ⏳ Next |
 | 14 | Task 2 | slave.ino: I2C, checksum, watchdog → export hex | ⬜ |
 | 15 | Task 2 | master.ino: pot, switch, LCD, frames → export hex | ⬜ |
 | 16 | Task 2 | Load hex files in Proteus, first run | ⬜ |

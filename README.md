@@ -9,4 +9,4 @@ See [PLAN.md](PLAN.md) for the plan and progress.
 
 ## Build and run
 1. Arduino IDE 1.8.19: open `master/master.ino` and `slave/slave.ino`. For each, select *Tools → Board → Arduino Uno*, then *Sketch → Export compiled Binary*.
-2. Proteus 8.5: open `IT6512_I2C_Velocity.pdsprj` and press ▶.
+2. Proteus 8.5: open `258843A.pdsprj` and press ▶.

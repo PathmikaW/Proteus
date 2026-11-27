@@ -15,3 +15,10 @@ __pycache__/
 # OS
 Thumbs.db
 desktop.ini
+
+# Proteus netlist exports (used only to check wiring)
+*.SDF
+
+# Raw bitmap exports (converted to PNG for the report)
+*.BMP
+*.bmp
