@@ -19,7 +19,7 @@
  *   S          step test: 0 RPM for 1 s, then 150 RPM          (Task 4)
  *   T          sequence 150 -> 80 -> -100 -> 0 RPM, 2 s each    (Task 5)
  *   P          pause / resume I2C sending (watchdog test)       (Task 2)
- *   X          send the next frame with a wrong checksum        (Task 2)
+ *   X          bad-checksum mode on / off (checksum test)       (Task 2)
  *   M          back to pot + switch control
  *   <number>   e.g. 120 or -80 then Enter: fixed setpoint
  *
@@ -65,7 +65,7 @@ int16_t fixedSp = 0;
 
 // ---------------- Link state ----------------
 bool paused = false;          // P key: stop sending (watchdog test)
-bool corruptNext = false;     // X key: next frame gets a bad checksum
+bool badChecksumMode = false; // X key: send frames with a wrong checksum
 bool resetIntegNext = true;   // FLAGS bit 1 on the next frame
 int16_t setpointRpm = 0;
 int16_t lastSentSp = 0;
@@ -136,10 +136,8 @@ void exchangeWithSlave() {
   f[2] = (uint8_t)(setpointRpm & 0xFF);
   f[3] = flags;
   f[4] = checksum(f);
-  if (corruptNext) {
-    f[4] ^= 0xFF;             // deliberately wrong checksum
-    corruptNext = false;
-    Serial.println(F("# sent one frame with a wrong checksum"));
+  if (badChecksumMode) {
+    f[4] ^= 0xFF;             // deliberately wrong checksum (test only)
   }
 
   Wire.beginTransmission(SLAVE_ADDRESS);
@@ -196,7 +194,9 @@ void handleSerial() {
       if (!paused) resetIntegNext = true;
       Serial.println(paused ? F("# I2C paused") : F("# I2C resumed"));
     } else if (c == 'X') {
-      corruptNext = true;
+      badChecksumMode = !badChecksumMode;
+      Serial.println(badChecksumMode ? F("# bad-checksum frames ON")
+                                     : F("# bad-checksum frames OFF"));
     } else if ((c >= '0' && c <= '9') || c == '-') {
       if (inputLen < sizeof(inputBuf) - 1) inputBuf[inputLen++] = c;
     } else if ((c == '\r' || c == '\n') && inputLen > 0) {
