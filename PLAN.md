@@ -189,6 +189,7 @@ Note: the 5 V terminals are labelled **VCC** (Proteus default 5 V rail). A separ
 
 | Date | Milestone | Status |
 |---|---|---|
+| 2026-11-27 | Task 5 done: tracking 150/80/-100/0 plotted; +50 % load (20 -> 30 %) still 0 RPM SSE, integral raises duty 199 -> 210 | ✅ Done |
 | 2026-11-27 | Task 4 done: open-loop curve (strongly non-linear, 150 RPM needs duty ~200), 6 gain sets tried, final PI Kp=1.0 Ki=10.0: OS 6 %, Ts 0.75 s, SSE 0.0 RPM | ✅ Done |
 | 2026-11-27 | Task 3 done: x4 decoding (3 RPM/count), direction from phase, scope captures both ways, accuracy within 2 counts. Motor model changed to Load 20 % and Effective Mass 0.004 (default 0.01 too slow for Ts ≤ 1 s) | ✅ Done |
 | 2026-11-27 | Task 2 evidence captured: write/read frames, FLAGS=03 reset-integrator frame, watchdog test (master paused), bad-checksum test (frames ignored, watchdog trips) | ✅ Done |
@@ -224,7 +225,7 @@ Note: the 5 V terminals are labelled **VCC** (Proteus default 5 V rail). A separ
 | 24 | Task 4 | PI tuning runs until targets met | ✅ Done |
 | 25 | Task 4 | Final step-response plot + tuning table + commit | ✅ Done |
 | 26 | Task 5 | Tracking sequence 150 → 80 → −100 → 0 | ✅ Done |
-| 27 | Task 5 | 50 % load test + integral explanation + commit | ⏳ Next |
-| 28 | Task 6 | Write the report (8 sections, ≤ 12 pages) | ⬜ |
+| 27 | Task 5 | 50 % load test + integral explanation + commit | ✅ Done |
+| 28 | Task 6 | Write the report (8 sections, ≤ 12 pages) | ⏳ Next |
 | 29 | Task 6 | Record the demo video (≤ 3 min) | ⬜ |
 | 30 | Task 6 | Build the zip, test it, viva preparation | ⬜ |

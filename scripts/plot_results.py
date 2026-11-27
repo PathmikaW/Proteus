@@ -6,6 +6,7 @@ Creates in report/:
   tuning_compare.png  0 -> 150 RPM step for every gain set tried (Task 4)
   step_final.png      final PI controller step response with targets (Task 4)
   tracking.png        setpoint sequence 150 -> 80 -> -100 -> 0 RPM (Task 5)
+  load_compare.png    150 RPM step at normal load (20 %) and +50 % load (30 %) (Task 5)
 
 All times are Proteus simulation time, measured from the step.
 Usage:  python scripts/plot_results.py
@@ -161,9 +162,40 @@ def plot_tracking():
     plt.close(fig)
 
 
+def plot_load():
+    runs = [("Load 20 % (normal)", "load_step_20pct.csv", BLUE),
+            ("Load 30 % (+50 %)", "load_step_30pct.csv", ORANGE)]
+    fig, (ax, ax2) = plt.subplots(2, 1, figsize=(7.5, 5.4), sharex=True,
+                                  gridspec_kw={"height_ratios": [3, 1.6]})
+    ax.axhspan(142.5, 157.5, color=BAND, zorder=0)
+    ax.axhline(150, color=TEXT2, lw=1, ls="--")
+    for label, fname, col in runs:
+        rows, t, m = step_series(os.path.join(DATA, fname))
+        sel = [(ti, r) for ti, r in zip(t, rows) if -0.25 <= ti <= 4.5]
+        last = [r[3] for ti, r in sel if ti > 2.5]
+        ax.plot([x[0] for x in sel], [x[1][2] for x in sel], color=col, lw=2, label=label)
+        ax2.plot([x[0] for x in sel], [x[1][3] for x in sel], color=col, lw=1.6,
+                 label=f"{label}: mean duty {sum(last) / len(last):.0f}")
+    ax.set_ylabel("Speed PV (RPM)")
+    ax.set_ylim(0, 175)
+    ax.set_title("150 RPM step, normal vs +50 % load (PI Kp = 1.0, Ki = 10.0)\n"
+                 "both reach 150 RPM with zero steady-state error; the integral supplies the extra duty",
+                 fontsize=9.5, color=TEXT, loc="left")
+    ax.legend(loc="lower right", fontsize=8)
+    ax2.set_ylim(150, 262)
+    ax2.set_ylabel("PWM duty")
+    ax2.set_xlabel("Time from step (s, simulation time)")
+    ax2.set_xlim(-0.25, 4.5)
+    ax2.legend(loc="upper right", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(os.path.join(OUT, "load_compare.png"))
+    plt.close(fig)
+
+
 if __name__ == "__main__":
     plot_openloop()
     plot_tuning()
     plot_final()
     plot_tracking()
+    plot_load()
     print("figures written to", os.path.abspath(OUT))
